@@ -1,0 +1,11 @@
+.table {
+	display: table;
+	border-spacing: 5px;
+	border-color: gray;
+}
+
+.inline {
+	display: inline-block;
+	*display: inline;
+	vertical-align: top;
+}

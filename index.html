@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>SudokuMP</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="css/clean-blog.min.css" rel="stylesheet">
+    <link href="css/custom.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="index.html">Final Writeup</a>
+                    </li>
+                    <li>
+                        <a href="proposal.html">Proposal</a>
+                    </li>
+                    <li>
+                        <a href="checkpoint.html">Checkpoint</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.google.com/presentation/d/1m44fo3QKKvO_e4gXRkA5OwCduMD8lBIxkwB7Ie1TKZU/edit?usp=sharing">Presentation</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/bendebebe/SudokuMP">Github</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('img/person_sudoku.jpg')">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="site-heading">
+                        <h1>SudokuMP</h1>
+                        <hr class="small">
+                        <span class="subheading">Ariel Tian and Ben Debebe</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div id="body" class="container">
+      <h2>Summary</h2>
+      <p>
+      We have implemented two versions of sudoku solvers in parallel using the OpenMp library: a humanistic solver and a brute force solver. The humanistic solver is based off <a href="http://www.ams.org/notices/200904/tx090400460p.pdf">Crook's Algorithm</a>, which is a deterministic solver except for cases in which guessing and backtracking is necessary. The brute force solver searches through all permutations of possibly correct answers. We implemented two versions because the humanistic version, although very fast, did not benefit much from parallelization which the brute force method showed considerable speedup.
+      </p>
+      <h2>Background</h2>
+      <p>
+      Sudoku is a logic-based number puzzle featuring a 9x9 board divided into rows, columns, and 3x3 square blocks. The goal of the game is to fill each row, column, and block with unique numbers in the range 1 through 9. Variations of sudoku have used larger boards, such as hexadoku: sudoku with a 16x16 board.
+      </p>
+      <p>Here is an example of a sudoku puzzle (left) along with its solution (right):</p>
+      <div class="inline">
+        <img src="img/example_sudoku.jpg">
+      </div>
+      <div class="inline">
+        <img src="img/example_solution.jpg">
+      </div>
+      <p>
+      The difficulty of any particular sudoku puzzle depends on how many numbers are initially given to the user. Easy sudoku puzzles generally start with 32 or more numbers, medium puzzles with 26-30 numbers, hard puzzles with 22-24 numbers, and expert puzzles with fewer than 20 numbers.
+      </p>
+      <h4>Crook's Algorithm</h4>
+      <p>
+      Crook's Algorithm describes a few methods for deterministically solving cells in sudoku puzzles, four of which are used by our humanistic solver:
+      <ol>
+          <li><em>Elimination</em>: If a cell has only one possible value left, then by process of elimination that value is the solution for that cell.</li>
+          <li><em>Lone Ranger</em>: If within a row/column/block, a value has only one cell where it can possibly go, then that value must go in that cell.</li>
+          <li><em>Twins</em>: If within a row/column/block, two values are contained within two cells, then no other values can go in those two cells.</li>
+          <li><em>Triplets</em>: If within a row/column/block, three values are contained within three cells, then no other values can go in those three cells.</li>
+      </ol>
+      </p>
+      <h2>Approach</h2>
+      <p><h4>Humanistic Solver</h4></p>
+      <p>
+      The humanistic solver tries the four methods in the order above. If any method makes changes, then the solver starts over from elimination. This is useful since most changes are made by elimination and lone rangers, and also twins and triplets take more time to find. 
+      </p>
+      <p>The following is a flow chart to visualize this process:</p>
+      <img class="inline" src="img/flow_chart.png">
+      <p>
+      We parallelized each of the methods used by the solver. Elimination was performed on each cell. Lone rangers, twins, and triplets was performed on each row, column, and block in parallel. Fine-grained synchronization was necessary because all threads were working with the same sudoku board. We took a few measures to minimize synchronization:
+      </p>
+      <ol>
+          <li>Solving rows, columns, and blocks in separate parallelized loops.</li>
+          <li>Maintaining two boards: a board with the solutions, and a board with the possible values in each cell.</li>
+      </ol>
+      <p>
+      These changes made it possible to remove all critical sections and locks in our code. For example, it was initially necessary to use a reader-writer lock in lone ranger, but we found a way to restructure the code to avoid locks.</p>
+      <p><h4>Brute Force Solver</h4></p>
+      <p>
+      The brute force solver searches through all valid solutions in parallel to find one correct answer. It does so by iterating through the following steps:</p>
+      <ol>
+          <li>Select the cell <em>c</em>with the least possible values left (<em>n</em> values).</li>
+          <li>Push onto the stack <em>n</em> new boards, each with a different solution for cell <em>c</em>.</li>
+          <li>Pop a board from the stack.</li>
+              <ol type="a">
+                  <li>If the board is solved, return.</li>
+                  <li>Otherwise, repeat from step 1.</li>
+              </ol>
+      </ol>
+      <p>
+      The parallel version is still being tweaked.
+      </p>
+      <h2>Results</h2>
+      <p><h4>Humanistic Solver</h4></p>
+      <p>
+      The humanistic solver did not achieve any noticeable speedup. We suspect this is because the solver was so fast that the overhead of spawning threads outweighed the benefits of parallelization. Here are the results:
+      </p>
+      <div class="inline">
+        <img src="img/humanistic_time.png">
+      </div>
+      <div>
+          <img src="img/humanistic_speedup.png">
+      </div>
+      <p>
+      For most of the puzzles, the solver performed worse when solving in parallel. However, it is interesting to note that the parallel solver achieved better speedup on the more challenging puzzles. This is perhaps because the difficult puzzles used harder techniques (i.e. twins and triplets) which would benefit more from parallelism, and they ran for more iterations.
+      </p>
+      <p><h4>Brute Force Solver</h4></p>
+      <p>
+          The brute force solver has not been completely finished yet.
+      </p>
+      <h2>References</h2>
+      <p>
+          <ul>
+              <li><a href="http://www.ams.org/notices/200904/tx090400460p.pdf">Crook's Algorithm Paper</a></li>
+              <li><a href="https://alitarhini.wordpress.com/2011/04/06/parallel-depth-first-sudoku-solver-algorithm/">Parallel Depth-First Sudoku Solver Algorithm</a></li>
+          </ul>
+      </p>
+
+
+    </div>
+
+    <hr>
+
+
+    <!-- jQuery -->
+    <script src="js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="js/clean-blog.min.js"></script>
+
+</body>
+
+</html>

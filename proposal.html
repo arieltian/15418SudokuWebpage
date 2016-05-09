@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>SudokuMP</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="css/clean-blog.min.css" rel="stylesheet">
+    <link href="css/custom.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="index.html">Final Writeup</a>
+                    </li>
+                    <li>
+                        <a href="proposal.html">Proposal</a>
+                    </li>
+                    <li>
+                        <a href="checkpoint.html">Checkpoint</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.google.com/presentation/d/1m44fo3QKKvO_e4gXRkA5OwCduMD8lBIxkwB7Ie1TKZU/edit?usp=sharing">Presentation</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/bendebebe/SudokuMP">Github</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('img/proposal.jpg')">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="site-heading">
+                        <h1>SudokuMP</h1>
+                        <hr class="small">
+                        <span class="subheading">Project Proposal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+      <h2>Summary</h2>
+      <p>
+      We plan to implement a sudoku solver in parallel using the OpenMp library. We will do so using <a href="http://www.ams.org/notices/200904/tx090400460p.pdf">Crook's Algorithm</a>, also known as the Humanistic Method, for solving sudoku puzzles, with a brute force game solver to handle cases in which the Humanistic Method fails to finish the puzzle. 
+      </p>
+      <h2>Background</h2>
+      <p>
+      Sudoku is a logic-based number puzzle featuring a 9x9 board divided into rows, columns, and 3x3 square blocks. The goal of the game is to fill each row, column, and block with unique numbers in the range 1 through 9. Variations of sudoku have used larger boards, such as hexadoku: sudoku with a 16x16 board.
+      </p>
+      <p>Here is an example of a sudoku puzzle (left) along with its solution (right):</p>
+      <div class="inline">
+        <img src="img/example_sudoku.jpg">
+      </div>
+      <div class="inline">
+        <img src="img/example_solution.jpg">
+      </div>
+      <p>
+      The difficulty of any particular sudoku puzzle depends on how many numbers are initially given to the user. Easy sudoku puzzles generally start with 32 or more numbers, medium puzzles with 26-30 numbers, hard puzzles with 22-24 numbers, and expert puzzles with fewer than 20 numbers.
+      </p>
+      <h2>The Challenge</h2>
+      <p>
+      Programming a parallel sudoku solver is challenging for the following reasons:
+      <ol>
+        <li>Sudoku is NP-Complete. There are over 6.67 x 10<sup>21</sup> possible Sudoku grids. Thus, if we were to implement a brute force solver, the solver would need to maximize efficiency.</li>
+        <li>If we were to implement a humanistic solver, the solver would need to search for solutions over rows, columns, and blocks. Since there is a lot of overlap between those, we will need to use fine-grained synchronization.</li>
+        <li>Due to the speed of the Humanistic Method, it may be difficult for a humanistic solver to benefit greatly from parallelism.</li>
+      </ol>
+      </p>
+      <h2>Resources</h2>
+      <p>
+      We plan on starting this project from scratch. We will research Crook's Algorithm for solving sudoku puzzles deterministically, and combine the algorithm with a brute force solver to ensure that our solver can solve any sudoku puzzle. Then, we will write a sequential solver in C++. We will parallelize our solver using OpenMP, which we could test on the Xeon Phi chip for maximum speedup. 
+      </p>
+      <h2>Goals and Deliverables</h2>
+      <p>
+      Our goal is to achieve close to linear speedup proportional to the number of cores used. This may be difficult for a humanistic solver (which is fast but harder to parallelize) and more achieveable with a brute force solver (which is slow but has more potential for speedup after parallelism).
+      </p>
+      <p>
+      Our stretch goal would be to create a GUI that displays a sudoku puzzle solving itself in real time. Another stretch goal would be to generalize our solver to accept any n x n sudoku board (where n is a square).
+      </p>
+      <h2>Platform Choice</h2>
+      <p>
+      We would like to run our solver on the Gates 3000 machines and the 3.2 GHz Intel Xeon Phi co-processors. We chose to use OpenMP because we are most familiar with it, and it also offers a good variety of synchronization tools (i.e. atomic, atomic capture, locks, etc.).
+      </p>
+      <h2>Schedule</h2>
+      <p>
+      <table class="table">
+          <tr>
+              <td>Week Of</td>
+              <td>Plan</td>
+          </tr>
+          <tr>
+              <td>3/27</td>
+              <td>Finalize idea and submit proposal.</td>
+          </tr>
+          <tr>
+              <td>4/3</td>
+              <td>Implement sequential solver.</td>
+          </tr>
+          <tr>
+              <td>4/10</td>
+              <td>Parallelize solver.</td>
+          </tr>
+          <tr>
+              <td>4/17</td>
+              <td>Improve upon parallelization.</td>
+          </tr>
+          <tr>
+              <td>4/24</td>
+              <td>Implement any stretch goals, wrap-up project.</td>
+          </tr>
+          <tr>
+              <td>5/1</td>
+              <td>Complete project presentation and write-up.</td>
+          </tr>
+      </table>
+      </p>
+
+    </div>
+
+    <hr>
+
+
+    <!-- jQuery -->
+    <script src="js/jquery.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="js/bootstrap.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="js/clean-blog.min.js"></script>
+
+</body>
+
+</html>
