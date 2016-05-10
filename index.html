@@ -92,31 +92,33 @@
     <div id="body" class="container">
       <h2>Summary</h2>
       <p>
-      We have implemented two versions of sudoku solvers in parallel using the OpenMp library: a humanistic solver and a brute force solver. The humanistic solver is based off <a href="http://www.ams.org/notices/200904/tx090400460p.pdf">Crook's Algorithm</a>, which is a deterministic solver except for cases in which guessing and backtracking is necessary. The brute force solver searches through all permutations of possibly correct answers. We implemented two versions because the humanistic version, although very fast, did not benefit much from parallelization which the brute force method showed considerable speedup.
+      We have implemented two versions of sudoku solvers in parallel using the OpenMp library: a humanistic solver and a brute force solver. The humanistic solver is based off <a href="http://www.ams.org/notices/200904/tx090400460p.pdf">Crook's Algorithm</a>, which is a deterministic solver except for cases in which guessing and backtracking is necessary. The brute force solver searches through permutations of possibly correct answers until it reaches a solution. We implemented two versions because the humanistic version, although very fast, did not benefit much from parallelization while the brute force method showed considerable speedup. When run on the GHC 3000 machines with 16 threads, the humanistic solver showed 3.6x speedup while the brute force solution showed 16.0x speedup.
       </p>
       <h2>Background</h2>
       <p>
       Sudoku is a logic-based number puzzle featuring a 9x9 board divided into rows, columns, and 3x3 square blocks. The goal of the game is to fill each row, column, and block with unique numbers in the range 1 through 9. Variations of sudoku have used larger boards, such as hexadoku: sudoku with a 16x16 board.
       </p>
       <p>Here is an example of a sudoku puzzle (left) along with its solution (right):</p>
+      <p>
       <div class="inline">
         <img src="img/example_sudoku.jpg">
       </div>
       <div class="inline">
         <img src="img/example_solution.jpg">
       </div>
-      <p>
-      The difficulty of any particular sudoku puzzle depends on how many numbers are initially given to the user. Easy sudoku puzzles generally start with 32 or more numbers, medium puzzles with 26-30 numbers, hard puzzles with 22-24 numbers, and expert puzzles with fewer than 20 numbers.
       </p>
       <h4>Crook's Algorithm</h4>
       <p>
       Crook's Algorithm describes a few methods for deterministically solving cells in sudoku puzzles, four of which are used by our humanistic solver:
       <ol>
-          <li><em>Elimination</em>: If a cell has only one possible value left, then by process of elimination that value is the solution for that cell.</li>
-          <li><em>Lone Ranger</em>: If within a row/column/block, a value has only one cell where it can possibly go, then that value must go in that cell.</li>
-          <li><em>Twins</em>: If within a row/column/block, two values are contained within two cells, then no other values can go in those two cells.</li>
-          <li><em>Triplets</em>: If within a row/column/block, three values are contained within three cells, then no other values can go in those three cells.</li>
+          <li><em>Elimination</em>: A cell has only one value left.</li>
+          <li><em>Lone Ranger</em>: In a row/column/block, a value has only one cell left.</li>
+          <li><em>Twins</em>: In a row/column/block, two values are contained within two cells.</li>
+          <li><em>Triplets</em>: In a row/column/block, three values are contained within three cells.</li>
       </ol>
+      </p>
+      <p>
+      Sudoku has a lot of potential for parallelism because the grid layout naturally allows different regions to be computed independently. However, the humanistic solver above is a quadratic time solver, which is already very fast considering the input size is small (81). So, the brute force method definitely has more potential for parallelism. Since sudoku is NP-complete, solving the board using brute force could result in substantial speedup.
       </p>
       <h2>Approach</h2>
       <p><h4>Humanistic Solver</h4></p>
@@ -126,34 +128,42 @@
       <p>The following is a flow chart to visualize this process:</p>
       <img class="inline" src="img/flow_chart.png">
       <p>
-      We parallelized each of the methods used by the solver. Elimination was performed on each cell. Lone rangers, twins, and triplets was performed on each row, column, and block in parallel. Fine-grained synchronization was necessary because all threads were working with the same sudoku board. We took a few measures to minimize synchronization:
-      </p>
-      <ol>
-          <li>Solving rows, columns, and blocks in separate parallelized loops.</li>
-          <li>Maintaining two boards: a board with the solutions, and a board with the possible values in each cell.</li>
-      </ol>
+      We parallelized each of the steps (outlined by a rectangle), and joined threads in between. Elimination was performed on each cell. Lone rangers, twins, and triplets was performed on each row, column, and block in parallel.</p>
       <p>
-      These changes made it possible to remove all critical sections and locks in our code. For example, it was initially necessary to use a reader-writer lock in lone ranger, but we found a way to restructure the code to avoid locks.</p>
+      We realized early on that just having a board of solved cells was not a great idea. It would be better to keep a separate board in which each cell contained all possible values for that cell. This prevented our algorithm from searching for possible values every time we tried to solve a cell, and thus let us avoid synchronization in many situations.
+      </p>
+      <p>
+      However, we could not avoid synchronization completely at first, so our original parallel implementation actually slowed down with more threads. We went back and reviewed some of the parallel decisions we had made, particularly the reader-writer lock we were using. We were structuring the code in a way that made fine-grained synchronization necessary, but by modifying how we implemented lone rangers, we were able to replace locks with atomic updates.</p>
       <p><h4>Brute Force Solver</h4></p>
       <p>
-      The brute force solver searches through all valid solutions in parallel to find one correct answer. It does so by iterating through the following steps:</p>
+      The brute force solver searches through valid cell values in parallel until the entire board is solved. It does so by iterating through the following steps:</p>
       <ol>
-          <li>Select the cell <em>c</em>with the least possible values left (<em>n</em> values).</li>
-          <li>Push onto the stack <em>n</em> new boards, each with a different solution for cell <em>c</em>.</li>
           <li>Pop a board from the stack.</li>
               <ol type="a">
                   <li>If the board is solved, return.</li>
-                  <li>Otherwise, repeat from step 1.</li>
-              </ol>
+              </ol>         
+          <li>Select the cell <em>c</em> with the least possible values left (<em>n</em> values).</li>
+          <li>Push onto the stack <em>n</em> new boards, each with a different solution for cell <em>c</em>. If there are no possible values for <em>c</em>, then do nothing.</li>
+          <li>Repeat until the board is solved.</li>
       </ol>
       <p>
-      The parallel version is still being tweaked.
+      We spent a substantial amount of time debugging race conditions, so we did not have enough time to implement some of the features we would've liked to, such as:
+      <ol>
+          <li>A separate work stack for each thread, with work stealing.</li>
+          <li>A stack.pop() function that hangs until work is put in it, instead of spinning.</li>
+      </ol>
       </p>
       <h2>Results</h2>
+      <p>We measured speedup on 16x16 sudoku boards that ranged from easy to expert. We used 16x16 instead of 9x9 boards because the smaller board solved too quickly to show noticeable speedup. We tested with 1, 2, 4, 8, and 16 OpenMP threads. For each data point, we took the median of five tests as the final value.</p>
       <p><h4>Humanistic Solver</h4></p>
       <p>
-      The humanistic solver did not achieve any noticeable speedup. We suspect this is because the solver was so fast that the overhead of spawning threads outweighed the benefits of parallelization. Here are the results:
+      The humanistic solver achieved linear speedup for 2 threads, but tapered off with more threads. We suspect this was because of two reasons:
+      <ol>
+        <li>The sequential regions in between the parallel ones (acting like a barrier) became a bottleneck. </li>
+        <li> The solver was so fast that the overhead of spawning threads outweighed the benefits of parallelization.</li>
+      </ol>
       </p>
+      <p>Here are the results:</p>
       <div class="inline">
         <img src="img/humanistic_time.png">
       </div>
@@ -161,9 +171,11 @@
           <img src="img/humanistic_speedup.png">
       </div>
       <p>
-      For most of the puzzles, the solver performed worse when solving in parallel. However, it is interesting to note that the parallel solver achieved better speedup on the more challenging puzzles. This is perhaps because the difficult puzzles used harder techniques (i.e. twins and triplets) which would benefit more from parallelism, and they ran for more iterations.
+      It is interesting to note that the humanistic solver achieved better speedup on the more challenging puzzles. This is perhaps because the difficult puzzles used harder techniques (i.e. twins and triplets) which would benefit more from parallelism, and they ran for more iterations.
       </p>
       <p><h4>Brute Force Solver</h4></p>
+      <p>The brute force solver achieved linear speedup, in fact even superlinear speedup on some tests. The superlinear speedup was possible because with multiple threads, the solver could arrive at the solution faster, and kill all the other threads before they did extra work. The results are graphed below:
+      </p>
       <p>
       <div class="inline">
           <img src="img/bf_time.png">
@@ -172,6 +184,9 @@
           <img src="img/bf_speedup.png">
       </div>
       </p>
+      <p>
+      Because we never implemented some of the features mentioned earlier, there is still a lot more room for improvement. For example, contention for the shared stack was extremely high. We suspect that if we had implemented separate work stacks with work stealing, we would have seen better than linear speedup.
+      </p>
       <h2>References</h2>
       <p>
           <ul>
@@ -179,8 +194,28 @@
               <li><a href="https://alitarhini.wordpress.com/2011/04/06/parallel-depth-first-sudoku-solver-algorithm/">Parallel Depth-First Sudoku Solver Algorithm</a></li>
           </ul>
       </p>
-
-
+      <h2>Work By Each Student</h2>
+      <p>
+      <h4>Ariel</h4></p>
+      <p>
+          <ul>
+              <li>Implemented sequential and parallel humanistic solver.</li>
+              <li>Tweaked parallel humanistic solver for better performance.</li>
+              <li>Debugged sequential brute force solver.</li>
+              <li>Implemented parallel brute force solver.</li>
+              <li>Re-wrote proposal and checkpoint.</li>
+              <li>Wrote the writeup.</li>
+              <li>Tested and graphed results.</li>
+              <li>Made the presentation.</li>
+          </ul>
+      </p>
+      <h4>Ben</h4>
+      <p>
+        <ul>
+          <li>Wrote proposal and checkpoint.</li>
+          <li>Wrote initial sequential brute force solver.</li>
+        </ul>
+      </p>
     </div>
 
     <hr>
